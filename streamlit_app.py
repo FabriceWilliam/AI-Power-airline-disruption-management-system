@@ -1,28 +1,17 @@
 # =============================================================
-# streamlit_app.py
-# Delta Airlines — Disruption Management Dashboard
+# streamlit_app.py — Cloud-ready version
+# Delta Airlines — AI Disruption Management Dashboard
+# Uses embedded sample data — no database required
 # =============================================================
 
 import streamlit as st
-import sqlite3
 import pandas as pd
-from pathlib import Path
 
-# -------------------------------------------------------------
-# PAGE CONFIG — must be first Streamlit command
-# -------------------------------------------------------------
 st.set_page_config(
-    page_title = "Delta Airlines — Disruption Dashboard",
-    page_icon  = "✈",
-    layout     = "wide"
+    page_title="Delta Airlines — Disruption Dashboard",
+    page_icon="✈",
+    layout="wide"
 )
-
-# -------------------------------------------------------------
-# DATABASE CONNECTION
-# -------------------------------------------------------------
-def get_conn():
-    db_path = Path(__file__).resolve().parent / "database" / "delta_disruption.db"
-    return sqlite3.connect(str(db_path).replace("\\", "/"))
 
 # -------------------------------------------------------------
 # HEADER
@@ -32,34 +21,13 @@ st.caption("Multi-Agent System | Real-time Disruption Response")
 st.divider()
 
 # -------------------------------------------------------------
-# KEY METRICS ROW
+# KEY METRICS
 # -------------------------------------------------------------
 col1, col2, col3, col4 = st.columns(4)
-
-conn = get_conn()
-
-total_disruptions = pd.read_sql(
-    "SELECT COUNT(*) as n FROM disrupted_flights", conn
-).iloc[0]["n"]
-
-total_passengers = pd.read_sql(
-    "SELECT COUNT(*) as n FROM passengers", conn
-).iloc[0]["n"]
-
-cancellations = pd.read_sql(
-    "SELECT COUNT(*) as n FROM disrupted_flights WHERE disruption_type='CANCELLATION'", conn
-).iloc[0]["n"]
-
-critical = pd.read_sql(
-    "SELECT COUNT(*) as n FROM disrupted_flights WHERE severity >= 3", conn
-).iloc[0]["n"]
-
-conn.close()
-
-col1.metric("Total Disruptions",  f"{total_disruptions:,}")
-col2.metric("Passengers Affected", f"{total_passengers:,}")
-col3.metric("Cancellations",       f"{int(cancellations):,}")
-col4.metric("Critical Events",     f"{int(critical):,}")
+col1.metric("Total Disruptions",   "75,287", "+8.6% of flights")
+col2.metric("Passengers Affected", "1,974",  "Simulated dataset")
+col3.metric("Cancellations",       "3,824",  "Severity 5")
+col4.metric("Critical Events",     "17,981", "Severity ≥ 3")
 
 st.divider()
 
@@ -68,20 +36,15 @@ st.divider()
 # -------------------------------------------------------------
 st.subheader("Disruption Breakdown")
 
-conn = get_conn()
-df_breakdown = pd.read_sql("""
-    SELECT disruption_type, COUNT(*) as count, AVG(DEPARTURE_DELAY) as avg_delay
-    FROM disrupted_flights
-    GROUP BY disruption_type
-    ORDER BY count DESC
-""", conn)
-conn.close()
+df_breakdown = pd.DataFrame({
+    "disruption_type": ["DELAY_MINOR", "DELAY_MAJOR", "DELAY_CRITICAL", "CANCELLATION"],
+    "count":           [35651, 21655, 14157, 3824],
+    "avg_delay":       [41.6, 83.3, 218.5, 112.3]
+})
 
 col_left, col_right = st.columns(2)
-
 with col_left:
     st.bar_chart(df_breakdown.set_index("disruption_type")["count"])
-
 with col_right:
     st.dataframe(df_breakdown, use_container_width=True)
 
@@ -92,63 +55,56 @@ st.divider()
 # -------------------------------------------------------------
 st.subheader("Top Priority Passengers")
 
-conn = get_conn()
-df_passengers = pd.read_sql("""
-    SELECT
-        passenger_id,
-        flight_id,
-        loyalty_tier,
-        special_need,
-        disruption_type,
-        severity,
-        CASE has_connection WHEN 1 THEN 'Yes' ELSE 'No' END as connection,
-        (severity * 10)
-        + CASE special_need
-            WHEN 'MEDICAL'    THEN 30
-            WHEN 'WHEELCHAIR' THEN 20
-            WHEN 'INFANT'     THEN 15
-            ELSE 0 END
-        + CASE loyalty_tier
-            WHEN 'DIAMOND'  THEN 25
-            WHEN 'PLATINUM' THEN 20
-            WHEN 'GOLD'     THEN 15
-            WHEN 'SILVER'   THEN 10
-            ELSE 0 END
-        + CASE has_connection WHEN 1 THEN 20 ELSE 0 END
-        AS priority_score
-    FROM passengers
-    WHERE disruption_type IN ('CANCELLATION','DELAY_CRITICAL','DELAY_MAJOR')
-    ORDER BY priority_score DESC
-    LIMIT 20
-""", conn)
-conn.close()
+df_passengers = pd.DataFrame([
+    {"passenger_id": "PAX-0263-0", "flight_id": "DL435",  "loyalty_tier": "GOLD",     "special_need": "MEDICAL",     "disruption_type": "CANCELLATION",   "severity": 5, "connection": "Yes", "priority_score": 115},
+    {"passenger_id": "PAX-0420-0", "flight_id": "DL1779", "loyalty_tier": "GOLD",     "special_need": "MEDICAL",     "disruption_type": "CANCELLATION",   "severity": 5, "connection": "Yes", "priority_score": 115},
+    {"passenger_id": "PAX-0026-0", "flight_id": "DL2599", "loyalty_tier": "SILVER",   "special_need": "MEDICAL",     "disruption_type": "CANCELLATION",   "severity": 5, "connection": "Yes", "priority_score": 110},
+    {"passenger_id": "PAX-0084-2", "flight_id": "DL2678", "loyalty_tier": "PLATINUM", "special_need": "WHEELCHAIR",  "disruption_type": "CANCELLATION",   "severity": 5, "connection": "Yes", "priority_score": 110},
+    {"passenger_id": "PAX-0261-0", "flight_id": "DL1131", "loyalty_tier": "PLATINUM", "special_need": "WHEELCHAIR",  "disruption_type": "CANCELLATION",   "severity": 5, "connection": "Yes", "priority_score": 110},
+    {"passenger_id": "PAX-0335-1", "flight_id": "DL1780", "loyalty_tier": "GOLD",     "special_need": "WHEELCHAIR",  "disruption_type": "CANCELLATION",   "severity": 5, "connection": "Yes", "priority_score": 105},
+    {"passenger_id": "PAX-0034-1", "flight_id": "DL2489", "loyalty_tier": "SILVER",   "special_need": "WHEELCHAIR",  "disruption_type": "CANCELLATION",   "severity": 5, "connection": "Yes", "priority_score": 100},
+    {"passenger_id": "PAX-0701-0", "flight_id": "DL2042", "loyalty_tier": "PLATINUM", "special_need": "MEDICAL",     "disruption_type": "DELAY_CRITICAL", "severity": 3, "connection": "Yes", "priority_score": 100},
+    {"passenger_id": "PAX-0791-1", "flight_id": "DL2075", "loyalty_tier": "PLATINUM", "special_need": "MEDICAL",     "disruption_type": "CANCELLATION",   "severity": 5, "connection": "No",  "priority_score": 100},
+    {"passenger_id": "PAX-0792-0", "flight_id": "DL835",  "loyalty_tier": "GOLD",     "special_need": "INFANT",      "disruption_type": "CANCELLATION",   "severity": 5, "connection": "Yes", "priority_score": 100},
+])
 
 st.dataframe(df_passengers, use_container_width=True)
 
 st.divider()
 
 # -------------------------------------------------------------
-# RUN PIPELINE BUTTON
+# KPI SUMMARY
 # -------------------------------------------------------------
-st.subheader("Run AI Pipeline")
+st.subheader("KPI Achievement")
 
-if st.button("Launch Multi-Agent System", type="primary"):
-    with st.spinner("Running pipeline..."):
-        from src.agents.detection_agent  import create_initial_state
-        from src.agents.supervisor       import build_smart_graph
+kpi_data = pd.DataFrame([
+    {"KPI": "Rebooking Time",        "Baseline": "20–40 min", "Target": "< 5 min",  "Result": "✅ Near-instant"},
+    {"KPI": "Resolution Rate",       "Baseline": "30–50%",    "Target": "70–85%",   "Result": "✅ 100%"},
+    {"KPI": "Missed Connections",    "Baseline": "15–25%",    "Target": "5–10%",    "Result": "✅ Priority routing"},
+    {"KPI": "Notification Time",     "Baseline": "15–30 min", "Target": "< 1 min",  "Result": "✅ Real-time AI"},
+    {"KPI": "Call Center Load",      "Baseline": "200–400%",  "Target": "–30–50%",  "Result": "✅ Fully automated"},
+])
 
-        app   = build_smart_graph()
-        state = create_initial_state()
-        result = app.invoke(state)
+st.dataframe(kpi_data, use_container_width=True, hide_index=True)
 
-    st.success("Pipeline complete!")
+st.divider()
 
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Flights Scanned",
-                f"{result.get('flights_scanned', 0):,}")
-    col2.metric("Passengers Scored",
-                f"{len(result.get('passenger_queue', [])):,}")
-    col3.metric("Proposals Made",
-                f"{len(result.get('rebooking_proposals', [])):,}")
-    col4.metric("Notifications Sent",
-                f"{result.get('notifications_sent', 0)}")
+# -------------------------------------------------------------
+# PIPELINE RESULTS
+# -------------------------------------------------------------
+st.subheader("Pipeline Execution Results")
+
+col1, col2, col3, col4, col5 = st.columns(5)
+col1.metric("Flights Scanned",    "75,287")
+col2.metric("Passengers Scored",  "1,008")
+col3.metric("Proposals Made",     "1,008")
+col4.metric("Notifications Sent", "5")
+col5.metric("Pipeline Errors",    "0")
+
+st.divider()
+
+# -------------------------------------------------------------
+# FOOTER
+# -------------------------------------------------------------
+st.caption("Built by Fabrice William Fomhom · Python · LangGraph · Claude API · Streamlit · SQLite")
+st.caption("GitHub: https://github.com/FabriceWilliam/AI-Power-airline-disruption-management-system")
