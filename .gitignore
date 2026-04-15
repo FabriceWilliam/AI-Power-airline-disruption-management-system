@@ -1,0 +1,14 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+data/raw/flights.csv
+data/raw/airports.csv
+data/raw/airlines.csv
+database/delta_disruption.db
+anaconda_projects/
+.ipynb_checkpoints/
+src/agents/__pycache__/
+src/state/__pycache__/
+.DS_Store
+Thumbs.db
